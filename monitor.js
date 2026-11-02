@@ -53,3 +53,55 @@ function recordFailure() {
         console.log(`Redis is SUSPECT. Failures: ${consecutiveFailures}`);
     }
 }
+
+
+function checkRedis() {
+
+    const socket = net.createConnection({
+        host: REDIS_HOST,
+        port: REDIS_PORT
+    });
+
+    let completed = false;
+
+    function finish(success) {
+
+        if (completed) return;
+        completed = true;
+
+        if (success) {
+            recordSuccess();
+        } else {
+            recordFailure();
+        }
+
+        socket.destroy();
+    }
+
+    socket.setTimeout(2000);
+
+    socket.on('connect', () => {
+        socket.write('PING\r\n');
+    });
+
+    socket.on('data', (data) => {
+
+        const response = data.toString().trim();
+
+        if (response === '+PONG') {
+            finish(true);
+        } else {
+            finish(false);
+        }
+    });
+
+    socket.on('timeout', () => {
+        console.log('Redis connection timed out');
+        finish(false);
+    });
+
+    socket.on('error', (err) => {
+        console.log(`Redis connection error: ${err.message}`);
+        finish(false);
+    });
+}
