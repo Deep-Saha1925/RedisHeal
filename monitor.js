@@ -13,8 +13,6 @@ let consecutiveSuccesses = 0;
 
 let currentState = 'HEALTHY';
 
-// will implement the monitoring logic.
-
 function recordSuccess() {
 
     consecutiveFailures = 0;
