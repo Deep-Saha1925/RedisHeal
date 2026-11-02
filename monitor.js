@@ -105,3 +105,11 @@ function checkRedis() {
         finish(false);
     });
 }
+
+console.log('RedisHeal monitoring started...');
+
+checkRedis();
+
+setInterval(() => {
+    checkRedis();
+}, CHECK_INTERVAL);
