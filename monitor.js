@@ -14,3 +14,23 @@ let consecutiveSuccesses = 0;
 let currentState = 'HEALTHY';
 
 // will implement the monitoring logic.
+
+function recordSuccess() {
+
+    consecutiveFailures = 0;
+    consecutiveSuccesses++;
+
+    if (
+        currentState === 'UNHEALTHY' &&
+        consecutiveSuccesses >= RECOVERY_THRESHOLD
+    ) {
+        currentState = 'HEALTHY';
+        console.log('Redis recovered! State: HEALTHY');
+    } 
+    else if (currentState === 'SUSPECT') {
+        currentState = 'HEALTHY';
+        console.log('Redis is responding again. State: HEALTHY');
+    }
+
+    console.log(`Success count: ${consecutiveSuccesses}`);
+}
