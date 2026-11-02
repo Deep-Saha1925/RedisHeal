@@ -34,3 +34,24 @@ function recordSuccess() {
 
     console.log(`Success count: ${consecutiveSuccesses}`);
 }
+
+function recordFailure() {
+
+    consecutiveSuccesses = 0;
+    consecutiveFailures++;
+
+    if (consecutiveFailures >= FAILURE_THRESHOLD) {
+
+        currentState = 'UNHEALTHY';
+
+        console.log('Redis is UNHEALTHY!');
+        console.log('Recovery may be required.');
+
+    } 
+    else {
+
+        currentState = 'SUSPECT';
+
+        console.log(`Redis is SUSPECT. Failures: ${consecutiveFailures}`);
+    }
+}
