@@ -12,6 +12,7 @@ let consecutiveFailures = 0;
 let consecutiveSuccesses = 0;
 
 let currentState = 'HEALTHY';
+let checkInProgress = false;
 
 function recordSuccess() {
 
