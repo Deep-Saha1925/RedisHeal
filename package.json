@@ -1,12 +1,13 @@
 {
   "name": "redisheal",
   "version": "1.0.0",
-  "description": "A self-healing controller for Redis built with Node.js",
+  "description": "A self-healing Redis monitoring controller built with Node.js",
   "type": "module",
   "main": "monitor.js",
   "scripts": {
     "start": "node monitor.js",
-    "monitor": "node monitor.js"
+    "monitor": "node monitor.js",
+    "stats": "node stats-view.js"
   },
   "keywords": [
     "redis",
