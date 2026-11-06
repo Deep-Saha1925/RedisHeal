@@ -5,6 +5,12 @@ import { performance } from 'node:perf_hooks';
 import { recoverRedis } from './recovery.js';
 import { log, logState } from './logger.js';
 
+import {
+    recordCheck,
+    recordIncident,
+    recordSuccessfulRecovery
+} from './stats.js';
+
 const REDIS_HOST = '127.0.0.1';
 const REDIS_PORT = 6379;
 
@@ -37,8 +43,17 @@ function transitionTo(nextState, reason) {
     logState(previousState, nextState, reason);
 
     if (nextState === STATES.UNHEALTHY) {
+        recordIncident(reason);
         log('Automatic recovery triggered.', 'RECOVERY');
         void recoverRedis();
+    }
+
+    if (
+        nextState === STATES.HEALTHY &&
+        previousState === STATES.RECOVERING
+    ) {
+        recordSuccessfulRecovery();
+        log('Redis recovery verified successfully.', 'RECOVERY');
     }
 }
 
@@ -62,7 +77,7 @@ function recordSuccess(latencyMs) {
             );
         } else {
             log(
-                `Recovery verification: ${consecutiveSuccesses}/${RECOVERY_THRESHOLD} successful checks`,
+                `Recovery verification: ${consecutiveSuccesses}/${RECOVERY_THRESHOLD}`,
                 'RECOVERY'
             );
         }
@@ -73,7 +88,7 @@ function recordSuccess(latencyMs) {
         transitionTo(STATES.HEALTHY, 'Redis responded successfully again');
     }
 
-    log(`Redis is responding. Latency: ${latencyMs.toFixed(2)} ms`);
+    log(`Redis PONG | ${latencyMs.toFixed(2)} ms`);
 }
 
 function recordFailure(reason) {
@@ -82,6 +97,9 @@ function recordFailure(reason) {
 
     if (currentState === STATES.UNHEALTHY) {
         log(`Redis remains unhealthy: ${reason}`, 'WARNING');
+
+        // The recovery module enforces a 30-second cooldown.
+        void recoverRedis();
         return;
     }
 
@@ -128,10 +146,12 @@ function checkRedis() {
         socket.destroy();
         checkInProgress = false;
 
-        const latency = performance.now() - startedAt;
+        const latencyMs = performance.now() - startedAt;
+
+        recordCheck(success, latencyMs);
 
         if (success) {
-            recordSuccess(latency);
+            recordSuccess(latencyMs);
         } else {
             log(`Health check failed: ${reason}`, 'WARNING');
             recordFailure(reason);
@@ -178,13 +198,11 @@ function shutdown() {
     log('RedisHeal monitor shutting down.');
 }
 
-log('========================================');
 log('RedisHeal monitoring system started.');
 log(`Target: ${REDIS_HOST}:${REDIS_PORT}`);
 log(`Check interval: ${CHECK_INTERVAL_MS} ms`);
 log(`Failure threshold: ${FAILURE_THRESHOLD}`);
 log(`Recovery threshold: ${RECOVERY_THRESHOLD}`);
-log('========================================');
 
 process.once('SIGINT', shutdown);
 process.once('SIGTERM', shutdown);
