@@ -1,5 +1,12 @@
+
 import { execFile } from 'node:child_process';
+
 import { log, logError } from './logger.js';
+
+import {
+    recordRecoveryAttempt,
+    recordDockerRestartResult
+} from './stats.js';
 
 const CONTAINER_NAME = 'redisheal-redis';
 const COOLDOWN_MS = 30000;
@@ -15,9 +22,7 @@ function runDockerCommand(args) {
             { timeout: 15000 },
             (error, stdout, stderr) => {
                 if (error) {
-                    reject(
-                        new Error(stderr.trim() || error.message)
-                    );
+                    reject(new Error(stderr.trim() || error.message));
                     return;
                 }
 
@@ -43,20 +48,27 @@ export async function recoverRedis() {
     recoveryInProgress = true;
     lastRecoveryTime = now;
 
+    recordRecoveryAttempt();
+
     try {
-        log(`Starting recovery for container: ${CONTAINER_NAME}`);
+        log(`Restarting Docker container: ${CONTAINER_NAME}`, 'RECOVERY');
 
         const output = await runDockerCommand([
             'restart',
             CONTAINER_NAME
         ]);
 
-        log(`Docker restart response: ${output}`);
-        log('Restart command completed. Waiting for health checks.');
+        recordDockerRestartResult(true, output);
+
+        log(`Docker restart command completed: ${output}`, 'RECOVERY');
+        log('Waiting for monitor to verify Redis health.', 'RECOVERY');
 
         return true;
     } catch (error) {
+        recordDockerRestartResult(false, error.message);
+
         logError(`Redis recovery failed: ${error.message}`);
+
         return false;
     } finally {
         recoveryInProgress = false;
